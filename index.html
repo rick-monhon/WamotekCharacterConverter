@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Wamotek Character Converter</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+        margin: 0;
+        min-height: 100vh;
+        background: #f4f6f8;
+        color: #20252b;
+
+        font-family:
+            "Noto Sans",
+            "Noto Sans CJK",
+            "Noto Sans Symbols 2",
+            "Segoe UI",
+            "Arial Unicode MS",
+            Arial,
+            sans-serif;
+    }
+
+    header {
+        background: #17324d;
+        color: white;
+        padding: 24px 32px;
+    }
+
+    header h1 {
+        margin: 0;
+        font-size: 25px;
+        font-weight: 700;
+    }
+
+    header p {
+        margin: 6px 0 0;
+        opacity: 0.82;
+        font-size: 14px;
+    }
+
+    main {
+        max-width: 1200px;
+        margin: 32px auto;
+        padding: 0 20px;
+    }
+
+    .converter {
+        display: grid;
+        grid-template-columns: 1fr 70px 1fr;
+        gap: 18px;
+        align-items: stretch;
+    }
+
+    .panel {
+        background: white;
+        border: 1px solid #dce1e6;
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    }
+
+    .panel-title {
+        padding: 13px 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e3e6e9;
+
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    textarea,
+    .output {
+        width: 100%;
+        min-height: 360px;
+
+        padding: 20px;
+        border: 0;
+        outline: none;
+
+        font-family:
+            "Noto Sans",
+            "Noto Sans CJK",
+            "Noto Sans Symbols 2",
+            "Segoe UI",
+            "Arial Unicode MS",
+            Arial,
+            sans-serif;
+
+        font-size: 20px;
+        line-height: 1.7;
+
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    textarea {
+        display: block;
+        resize: vertical;
+    }
+
+    .output {
+        background: #ffffff;
+    }
+
+    .arrow {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        color: #17324d;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    /*
+        Red = spelling may require manual modification.
+        Pure pronunciation rules are NOT highlighted.
+    */
+    .warning {
+        color: #d00000;
+        font-weight: 700;
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    button {
+        padding: 10px 16px;
+
+        border: 0;
+        border-radius: 9px;
+
+        background: #17324d;
+        color: white;
+
+        cursor: pointer;
+
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    button:hover {
+        background: #234967;
+    }
+
+    button.secondary {
+        background: #e8edf1;
+        color: #26323c;
+    }
+
+    button.secondary:hover {
+        background: #dce3e8;
+    }
+
+    .status {
+        margin-top: 16px;
+        padding: 13px 16px;
+
+        background: white;
+        border: 1px solid #dce1e6;
+        border-radius: 10px;
+
+        font-size: 14px;
+    }
+
+    .status.warning-status {
+        color: #b00000;
+        background: #fff5f5;
+        border-color: #f0cccc;
+    }
+
+    .legend {
+        margin-top: 12px;
+
+        color: #68737d;
+        font-size: 13px;
+    }
+
+    .legend span {
+        color: #d00000;
+        font-weight: 700;
+    }
+
+    @media (max-width: 800px) {
+        .converter {
+            grid-template-columns: 1fr;
+        }
+
+        .arrow {
+            height: 40px;
+            transform: rotate(90deg);
+        }
+    }
+</style>
+
+</head>
+
+<body>
+
+<header>
+    <h1>Wamotek Character Converter</h1>
+    <p>Character-by-character conversion with spelling-change detection</p>
+</header>
+
+<main>
+
+<div class="converter">
+
+    <div class="panel">
+        <div class="panel-title">Input</div>
+
+        <textarea
+            id="input"
+            placeholder="Type or paste text here..."
+        ></textarea>
+    </div>
+
+    <div class="arrow">→</div>
+
+    <div class="panel">
+        <div class="panel-title">Converted Output</div>
+
+        <div
+            id="output"
+            class="output"
+        ></div>
+    </div>
+
+</div>
+
+<div class="controls">
+
+    <button onclick="convertText()">
+        Convert
+    </button>
+
+    <button
+        class="secondary"
+        onclick="clearAll()"
+    >
+        Clear
+    </button>
+
+</div>
+
+<div
+    id="status"
+    class="status"
+>
+    No spelling changes detected.
+</div>
+
+<div class="legend">
+    <span>Red and bold</span> = spelling may require manual modification.
+</div>
+
+</main>
+
+<script>
+
+/* ============================================================
+   CHARACTER CONVERSION TABLE
+   ============================================================ */
+
+const mapping = {
+
+    /* Vowels */
+
+    "A": "I",
+    "a": "i",
+
+    "E": "U",
+    "e": "u",
+
+    "I": "A",
+    "i": "a",
+
+    "O": "Ü",
+    "o": "ü",
+
+    "U": "O",
+    "u": "o",
+
+    "Y": "E",
+    "y": "e",
+
+
+    /* Consonants */
+
+    "B": "S",
+    "b": "s",
+
+    "C": "L",
+    "c": "l",
+
+    "D": "C",
+    "d": "c",
+
+    "F": "G",
+    "f": "g",
+
+    "G": "M",
+    "g": "m",
+
+    "H": "Ö",
+    "h": "ö",
+
+    "J": "J",
+    "j": "j",
+
+    "K": "Ë",
+    "k": "ë",
+
+    "L": "Z",
+    "l": "z",
+
+    "M": "H",
+    "m": "h",
+
+    "N": "T",
+    "n": "t",
+
+    "P": "P",
+    "p": "p",
+
+    "Q": "V",
+    "q": "v",
+
+    "R": "B",
+    "r": "b",
+
+    "S": "R",
+    "s": "r",
+
+    "T": "K",
+    "t": "k",
+
+    "V": "X",
+    "v": "x",
+
+    "W": "N",
+    "w": "n",
+
+    "X": "F",
+    "x": "f",
+
+    "Z": "D",
+    "z": "d"
+};
+
+
+/* ============================================================
+   CHARACTER CATEGORIES
+   ============================================================ */
+
+const consonants = new Set([
+
+    "b", "c", "d", "f", "g", "h", "j", "k",
+    "l", "m", "n", "p", "q", "r", "s", "t",
+    "v", "w", "x", "z",
+
+    "B", "C", "D", "F", "G", "H", "J", "K",
+    "L", "M", "N", "P", "Q", "R", "S", "T",
+    "V", "W", "X", "Z"
+]);
+
+
+/*
+    Only these consonants cause Rule 1 to require
+    a possible spelling modification.
+*/
+
+const clusterTriggers = new Set([
+    "c", "r", "s", "x", "z",
+    "C", "R", "S", "X", "Z"
+]);
+
+
+/*
+    Letters used for Rule 3.
+*/
+
+const letters = /^[A-Za-zÄËÏÖÜäëïöü]$/;
+
+
+/* ============================================================
+   CHARACTER-BY-CHARACTER CONVERSION
+   ============================================================ */
+
+function convertCharacter(char) {
+
+    return mapping[char] ?? char;
+}
+
+
+function convertText() {
+
+    const input =
+        document.getElementById("input").value;
+
+    let converted = "";
+
+    for (const char of input) {
+        converted += convertCharacter(char);
+    }
+
+    renderOutput(converted);
+}
+
+
+/* ============================================================
+   SPELLING WARNING DETECTION
+   ============================================================
+
+   IMPORTANT:
+
+   Only rules that can require a SPELLING change are detected.
+
+   Rule 1:
+       Consonant cluster containing c/r/s/x/z
+
+   Rule 3:
+       Repeated letters
+
+   NOT detected:
+
+       Three or more vowels
+       Vowel + h
+       Vowel + l
+
+   Those are pronunciation rules only.
+   ============================================================ */
+
+function findWarnings(text) {
+
+    const warnings = [];
+
+
+    function addWarning(start, end) {
+
+        if (end > start) {
+            warnings.push({
+                start: start,
+                end: end
+            });
+        }
+    }
+
+
+    /* ========================================================
+       RULE 1
+       Consonant clusters containing c/r/s/x/z
+
+       A single consonant is NOT a cluster.
+
+       c       → no warning
+       r       → no warning
+       sz      → warning
+       cs      → warning
+       str     → warning
+       br      → warning
+       kl      → no warning
+
+       Only the actual consonant cluster is highlighted.
+       ======================================================== */
+
+    let i = 0;
+
+    while (i < text.length) {
+
+        if (!consonants.has(text[i])) {
+            i++;
+            continue;
+        }
+
+        const start = i;
+
+        while (
+            i < text.length &&
+            consonants.has(text[i])
+        ) {
+            i++;
+        }
+
+        const end = i;
+
+        /*
+            A cluster must contain at least
+            two consecutive consonants.
+        */
+
+        if (end - start >= 2) {
+
+            let containsTrigger = false;
+
+            for (
+                let j = start;
+                j < end;
+                j++
+            ) {
+
+                if (clusterTriggers.has(text[j])) {
+                    containsTrigger = true;
+                    break;
+                }
+            }
+
+            if (containsTrigger) {
+                addWarning(start, end);
+            }
+        }
+    }
+
+
+    /* ========================================================
+       RULE 2
+
+       Three or more consecutive vowels.
+
+       INTENTIONALLY NOT DETECTED.
+
+       This only affects pronunciation.
+       The spelling remains unchanged.
+       ======================================================== */
+
+
+    /* ========================================================
+       RULE 3
+       Consecutive repeated letters.
+
+       Examples:
+
+       ll   → warning
+       ss   → warning
+       aaa  → warning
+
+       The repeated letters are highlighted.
+
+       This is deliberately conservative because the converter
+       cannot know whether a repeated letter was created at the
+       boundary of two words intentionally combined into one.
+       ======================================================== */
+
+    i = 0;
+
+    while (i < text.length - 1) {
+
+        const current = text[i];
+        const next = text[i + 1];
+
+        if (
+            letters.test(current) &&
+            letters.test(next) &&
+            current.toLowerCase() ===
+            next.toLowerCase()
+        ) {
+
+            addWarning(i, i + 2);
+        }
+
+        i++;
+    }
+
+
+    /* ========================================================
+       RULE 4
+
+       e/i/u + h
+
+       INTENTIONALLY NOT DETECTED.
+
+       This changes pronunciation only.
+       ======================================================== */
+
+
+    /* ========================================================
+       RULE 5
+
+       Vowel + l
+
+       INTENTIONALLY NOT DETECTED.
+
+       The spelling does not change.
+       Only the pronunciation of l changes.
+       ======================================================== */
+
+
+    /* ========================================================
+       MERGE OVERLAPPING WARNINGS
+       ======================================================== */
+
+    warnings.sort(
+        (a, b) => a.start - b.start
+    );
+
+    const merged = [];
+
+    for (const warning of warnings) {
+
+        if (merged.length === 0) {
+
+            merged.push({
+                start: warning.start,
+                end: warning.end
+            });
+
+            continue;
+        }
+
+        const last =
+            merged[merged.length - 1];
+
+        if (warning.start <= last.end) {
+
+            last.end =
+                Math.max(
+                    last.end,
+                    warning.end
+                );
+
+        } else {
+
+            merged.push({
+                start: warning.start,
+                end: warning.end
+            });
+        }
+    }
+
+    return merged;
+}
+
+
+/* ============================================================
+   HTML ESCAPING
+   ============================================================ */
+
+function escapeHTML(text) {
+
+    return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* ============================================================
+   RENDER OUTPUT
+   ============================================================
+
+   Newlines are preserved because .output uses
+   white-space: pre-wrap.
+
+   No <br> conversion is needed.
+   ============================================================ */
+
+function renderOutput(text) {
+
+    const output =
+        document.getElementById("output");
+
+    const status =
+        document.getElementById("status");
+
+    const warnings =
+        findWarnings(text);
+
+
+    if (warnings.length === 0) {
+
+        output.textContent = text;
+
+        status.textContent =
+            "No spelling changes detected.";
+
+        status.classList.remove(
+            "warning-status"
+        );
+
+        return;
+    }
+
+
+    let html = "";
+    let position = 0;
+
+
+    for (const warning of warnings) {
+
+        /*
+            Normal text before the warning.
+        */
+
+        html += escapeHTML(
+            text.slice(
+                position,
+                warning.start
+            )
+        );
+
+
+        /*
+            Only the exact spelling-change area
+            becomes red and bold.
+        */
+
+        html +=
+            '<span class="warning">' +
+            escapeHTML(
+                text.slice(
+                    warning.start,
+                    warning.end
+                )
+            ) +
+            '</span>';
+
+
+        position = warning.end;
+    }
+
+
+    /*
+        Remaining normal text.
+    */
+
+    html += escapeHTML(
+        text.slice(position)
+    );
+
+
+    output.innerHTML = html;
+
+
+    status.textContent =
+        warnings.length +
+        " spelling section(s) may require manual modification.";
+
+    status.classList.add(
+        "warning-status"
+    );
+}
+
+
+/* ============================================================
+   CLEAR
+   ============================================================ */
+
+function clearAll() {
+
+    document.getElementById("input").value = "";
+
+    document.getElementById("output").textContent = "";
+
+    const status =
+        document.getElementById("status");
+
+    status.textContent =
+        "No spelling changes detected.";
+
+    status.classList.remove(
+        "warning-status"
+    );
+}
+
+
+/* ============================================================
+   LIVE CONVERSION
+   ============================================================ */
+
+document
+    .getElementById("input")
+    .addEventListener(
+        "input",
+        convertText
+    );
+
+</script>
+
+</body>
+</html>
