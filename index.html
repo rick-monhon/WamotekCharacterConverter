@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -790,6 +791,47 @@ function findWarnings(text) {
 
     /* ========================================================
        RULE 3
+       Three or more consecutive consonants
+       ======================================================== */
+
+    i = 0;
+
+
+    while (i < text.length) {
+
+        if (!consonants.has(text[i])) {
+
+            i++;
+            continue;
+        }
+
+
+        const start = i;
+
+
+        while (
+            i < text.length &&
+            consonants.has(text[i])
+        ) {
+
+            i++;
+        }
+
+
+        const end = i;
+
+
+        if (end - start >= 3) {
+
+            addWarning(
+                start,
+                end
+            );
+        }
+    }
+
+    /* ========================================================
+       RULE 4
        Repeated consecutive letters
        ======================================================== */
 
@@ -826,7 +868,7 @@ function findWarnings(text) {
 
 
     /* ========================================================
-       RULE 4
+       RULE 5
        Dotted vowel + h
 
        Only h is highlighted.
@@ -852,7 +894,7 @@ function findWarnings(text) {
 
 
     /* ========================================================
-       RULE 5
+       RULE 6
        Dotted vowel + l
 
        No spelling warning.
