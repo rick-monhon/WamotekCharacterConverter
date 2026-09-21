@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -60,15 +59,19 @@
     }
 
     .panel {
+        position: relative;
+
         background: white;
         border: 1px solid #dce1e6;
         border-radius: 14px;
         overflow: hidden;
+
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
     }
 
     .panel-title {
         padding: 13px 16px;
+
         background: #f8f9fa;
         border-bottom: 1px solid #e3e6e9;
 
@@ -77,7 +80,8 @@
     }
 
     textarea,
-    .output {
+    .output,
+    .locked-input {
         width: 100%;
         min-height: 360px;
 
@@ -108,6 +112,14 @@
 
     .output {
         background: #ffffff;
+        cursor: default;
+    }
+
+    .locked-input {
+        display: none;
+        background: #ffffff;
+        cursor: default;
+        overflow: auto;
     }
 
     .arrow {
@@ -120,23 +132,157 @@
         font-weight: bold;
     }
 
-    /*
-        Red = spelling may require manual modification.
-        Pure pronunciation rules are NOT highlighted.
-    */
+
+    /* ========================================================
+       SPELLING WARNING
+       ======================================================== */
+
     .warning {
         color: #d00000;
         font-weight: 700;
     }
 
+
+    /* ========================================================
+       WORD CLASS MARKING
+       ======================================================== */
+
+    .word {
+        position: relative;
+        display: inline;
+        border-radius: 4px;
+    }
+
+    /*
+       Hover is ONLY enabled inside the locked Input area.
+       Output never receives hover highlighting.
+    */
+
+    .locked-input .word {
+        cursor: pointer;
+    }
+
+    .locked-input .word:hover {
+        background: #eef3f7;
+    }
+
+    .word.noun {
+        background: #ffd9d9;
+    }
+
+    .word.verb {
+        background: #d9f3df;
+    }
+
+    .word.adjective {
+        background: #fff1b8;
+    }
+
+    .word-label {
+        display: inline-block;
+
+        margin-left: 4px;
+        padding: 1px 5px;
+
+        border-radius: 4px;
+
+        background: #17324d;
+        color: white;
+
+        font-family:
+            "Noto Sans",
+            "Noto Sans CJK",
+            "Segoe UI",
+            Arial,
+            sans-serif;
+
+        font-size: 11px;
+        line-height: 1.4;
+        font-weight: 700;
+
+        vertical-align: middle;
+    }
+
+
+    /* ========================================================
+       WORD CLASS MENU
+       ======================================================== */
+
+    .word-menu {
+        position: fixed;
+        z-index: 1000;
+
+        display: none;
+
+        min-width: 160px;
+        padding: 6px;
+
+        background: white;
+        border: 1px solid #d7dde2;
+        border-radius: 10px;
+
+        box-shadow:
+            0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .word-menu.visible {
+        display: block;
+    }
+
+    .menu-title {
+        padding: 7px 9px 6px;
+
+        color: #68737d;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .menu-button {
+        display: block;
+
+        width: 100%;
+        padding: 8px 10px;
+
+        border: 0;
+        border-radius: 7px;
+
+        background: transparent;
+        color: #20252b;
+
+        text-align: left;
+        font-size: 14px;
+        font-weight: 600;
+
+        cursor: pointer;
+    }
+
+    .menu-button:hover {
+        background: #eef3f7;
+    }
+
+    .menu-button.remove {
+        margin-top: 4px;
+
+        border-top: 1px solid #e5e8eb;
+        border-radius: 0 0 7px 7px;
+
+        color: #a00000;
+    }
+
+
+    /* ========================================================
+       CONTROLS
+       ======================================================== */
+
     .controls {
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
+
         margin-top: 20px;
     }
 
-    button {
+    button.main-button {
         padding: 10px 16px;
 
         border: 0;
@@ -151,18 +297,33 @@
         font-weight: 600;
     }
 
-    button:hover {
+    button.main-button:hover {
         background: #234967;
     }
 
     button.secondary {
+        padding: 10px 16px;
+
+        border: 0;
+        border-radius: 9px;
+
         background: #e8edf1;
         color: #26323c;
+
+        cursor: pointer;
+
+        font-size: 14px;
+        font-weight: 600;
     }
 
     button.secondary:hover {
         background: #dce3e8;
     }
+
+
+    /* ========================================================
+       STATUS
+       ======================================================== */
 
     .status {
         margin-top: 16px;
@@ -188,12 +349,19 @@
         font-size: 13px;
     }
 
-    .legend span {
+    .legend .red {
         color: #d00000;
         font-weight: 700;
     }
 
+    .legend .blue {
+        color: #17324d;
+        font-weight: 700;
+    }
+
+
     @media (max-width: 800px) {
+
         .converter {
             grid-template-columns: 1fr;
         }
@@ -203,6 +371,7 @@
             transform: rotate(90deg);
         }
     }
+
 </style>
 
 </head>
@@ -211,7 +380,9 @@
 
 <header>
     <h1>Wamotek Character Converter</h1>
-    <p>Character-by-character conversion with spelling-change detection</p>
+    <p>
+        Character-by-character conversion with spelling and word-class marking
+    </p>
 </header>
 
 <main>
@@ -219,31 +390,53 @@
 <div class="converter">
 
     <div class="panel">
-        <div class="panel-title">Input</div>
+
+        <div class="panel-title">
+            Input
+        </div>
 
         <textarea
             id="input"
             placeholder="Type or paste text here..."
         ></textarea>
+
+        <div
+            id="lockedInput"
+            class="locked-input"
+        ></div>
+
     </div>
 
-    <div class="arrow">→</div>
+
+    <div class="arrow">
+        →
+    </div>
+
 
     <div class="panel">
-        <div class="panel-title">Converted Output</div>
+
+        <div class="panel-title">
+            Converted Output
+        </div>
 
         <div
             id="output"
             class="output"
         ></div>
+
     </div>
 
 </div>
 
+
 <div class="controls">
 
-    <button onclick="convertText()">
-        Convert
+    <button
+        id="lockButton"
+        class="main-button"
+        onclick="toggleLock()"
+    >
+        Lock
     </button>
 
     <button
@@ -253,7 +446,15 @@
         Clear
     </button>
 
+    <button
+        class="secondary"
+        onclick="clearWordClasses()"
+    >
+        Clear Word Classes
+    </button>
+
 </div>
+
 
 <div
     id="status"
@@ -262,11 +463,72 @@
     No spelling changes detected.
 </div>
 
+
 <div class="legend">
-    <span>Red and bold</span> = spelling may require manual modification.
+
+    <span class="red">
+        Red and bold
+    </span>
+    = spelling may require manual modification.
+
+    &nbsp;&nbsp;
+
+    <span class="blue">
+        Word class colors
+    </span>
+    = n. noun, v. verb, de. descriptive.
+
 </div>
 
 </main>
+
+
+<div
+    id="wordMenu"
+    class="word-menu"
+>
+
+<div class="menu-title">
+    Select word class
+</div>
+
+<button
+    class="menu-button"
+    onclick="setWordClass('n.')"
+>
+    n. Noun
+</button>
+
+<button
+    class="menu-button"
+    onclick="setWordClass('v.')"
+>
+    v. Verb
+</button>
+
+<button
+    class="menu-button"
+    onclick="setWordClass('de.')"
+>
+    de. Descriptive
+</button>
+
+<button
+    class="menu-button"
+    onclick="setWordClass('n/a')"
+>
+    n/a Not applicable
+</button>
+
+<button
+    class="menu-button remove"
+    onclick="removeWordClass()"
+>
+    Remove marking
+</button>
+
+</div>
+
 
 <script>
 
@@ -275,8 +537,6 @@
    ============================================================ */
 
 const mapping = {
-
-    /* Vowels */
 
     "A": "I",
     "a": "i",
@@ -295,9 +555,6 @@ const mapping = {
 
     "Y": "E",
     "y": "e",
-
-
-    /* Consonants */
 
     "B": "S",
     "b": "s",
@@ -365,8 +622,28 @@ const mapping = {
    CHARACTER CATEGORIES
    ============================================================ */
 
-const consonants = new Set([
+/*
+   Only dotted E, O and U are vowels for spelling rules:
 
+       Ë ë
+       Ö ö
+       Ü ü
+
+   Plain E, O and U are NOT treated as vowels by
+   the spelling-warning system.
+*/
+
+const vowels = new Set([
+    "Ë",
+    "ë",
+    "Ö",
+    "ö",
+    "Ü",
+    "ü"
+]);
+
+
+const consonants = new Set([
     "b", "c", "d", "f", "g", "h", "j", "k",
     "l", "m", "n", "p", "q", "r", "s", "t",
     "v", "w", "x", "z",
@@ -377,26 +654,29 @@ const consonants = new Set([
 ]);
 
 
-/*
-    Only these consonants cause Rule 1 to require
-    a possible spelling modification.
-*/
-
 const clusterTriggers = new Set([
     "c", "r", "s", "x", "z",
     "C", "R", "S", "X", "Z"
 ]);
 
 
-/*
-    Letters used for Rule 3.
-*/
-
-const letters = /^[A-Za-zÄËÏÖÜäëïöü]$/;
+const letters =
+    /^[A-Za-zÄËÏÖÜäëïöü]$/;
 
 
 /* ============================================================
-   CHARACTER-BY-CHARACTER CONVERSION
+   LOCK STATE
+   ============================================================ */
+
+let isLocked = false;
+
+let wordClasses = {};
+
+let selectedWordIndex = null;
+
+
+/* ============================================================
+   CHARACTER CONVERSION
    ============================================================ */
 
 function convertCharacter(char) {
@@ -405,42 +685,22 @@ function convertCharacter(char) {
 }
 
 
-function convertText() {
-
-    const input =
-        document.getElementById("input").value;
+function convertString(text) {
 
     let converted = "";
 
-    for (const char of input) {
-        converted += convertCharacter(char);
+    for (const char of text) {
+
+        converted +=
+            convertCharacter(char);
     }
 
-    renderOutput(converted);
+    return converted;
 }
 
 
 /* ============================================================
    SPELLING WARNING DETECTION
-   ============================================================
-
-   IMPORTANT:
-
-   Only rules that can require a SPELLING change are detected.
-
-   Rule 1:
-       Consonant cluster containing c/r/s/x/z
-
-   Rule 3:
-       Repeated letters
-
-   NOT detected:
-
-       Three or more vowels
-       Vowel + h
-       Vowel + l
-
-   Those are pronunciation rules only.
    ============================================================ */
 
 function findWarnings(text) {
@@ -451,9 +711,10 @@ function findWarnings(text) {
     function addWarning(start, end) {
 
         if (end > start) {
+
             warnings.push({
-                start: start,
-                end: end
+                start,
+                end
             });
         }
     }
@@ -461,49 +722,40 @@ function findWarnings(text) {
 
     /* ========================================================
        RULE 1
-       Consonant clusters containing c/r/s/x/z
-
-       A single consonant is NOT a cluster.
-
-       c       → no warning
-       r       → no warning
-       sz      → warning
-       cs      → warning
-       str     → warning
-       br      → warning
-       kl      → no warning
-
-       Only the actual consonant cluster is highlighted.
+       Consonant cluster containing c/r/s/x/z
        ======================================================== */
 
     let i = 0;
 
+
     while (i < text.length) {
 
         if (!consonants.has(text[i])) {
+
             i++;
             continue;
         }
 
+
         const start = i;
+
 
         while (
             i < text.length &&
             consonants.has(text[i])
         ) {
+
             i++;
         }
 
+
         const end = i;
 
-        /*
-            A cluster must contain at least
-            two consecutive consonants.
-        */
 
         if (end - start >= 2) {
 
             let containsTrigger = false;
+
 
             for (
                 let j = start;
@@ -511,14 +763,24 @@ function findWarnings(text) {
                 j++
             ) {
 
-                if (clusterTriggers.has(text[j])) {
+                if (
+                    clusterTriggers.has(
+                        text[j]
+                    )
+                ) {
+
                     containsTrigger = true;
                     break;
                 }
             }
 
+
             if (containsTrigger) {
-                addWarning(start, end);
+
+                addWarning(
+                    start,
+                    end
+                );
             }
         }
     }
@@ -526,39 +788,30 @@ function findWarnings(text) {
 
     /* ========================================================
        RULE 2
+       Three or more dotted vowels
 
-       Three or more consecutive vowels.
-
-       INTENTIONALLY NOT DETECTED.
-
-       This only affects pronunciation.
-       The spelling remains unchanged.
+       No spelling warning.
        ======================================================== */
 
 
     /* ========================================================
        RULE 3
-       Consecutive repeated letters.
-
-       Examples:
-
-       ll   → warning
-       ss   → warning
-       aaa  → warning
-
-       The repeated letters are highlighted.
-
-       This is deliberately conservative because the converter
-       cannot know whether a repeated letter was created at the
-       boundary of two words intentionally combined into one.
+       Repeated consecutive letters
        ======================================================== */
 
     i = 0;
 
-    while (i < text.length - 1) {
 
-        const current = text[i];
-        const next = text[i + 1];
+    while (
+        i < text.length - 1
+    ) {
+
+        const current =
+            text[i];
+
+        const next =
+            text[i + 1];
+
 
         if (
             letters.test(current) &&
@@ -567,8 +820,12 @@ function findWarnings(text) {
             next.toLowerCase()
         ) {
 
-            addWarning(i, i + 2);
+            addWarning(
+                i,
+                i + 2
+            );
         }
+
 
         i++;
     }
@@ -576,24 +833,35 @@ function findWarnings(text) {
 
     /* ========================================================
        RULE 4
+       Dotted vowel + h
 
-       e/i/u + h
-
-       INTENTIONALLY NOT DETECTED.
-
-       This changes pronunciation only.
+       Only h is highlighted.
        ======================================================== */
+
+    for (
+        i = 0;
+        i < text.length - 1;
+        i++
+    ) {
+
+        if (
+            vowels.has(text[i]) &&
+            text[i + 1].toLowerCase() === "h"
+        ) {
+
+            addWarning(
+                i + 1,
+                i + 2
+            );
+        }
+    }
 
 
     /* ========================================================
        RULE 5
+       Dotted vowel + l
 
-       Vowel + l
-
-       INTENTIONALLY NOT DETECTED.
-
-       The spelling does not change.
-       Only the pronunciation of l changes.
+       No spelling warning.
        ======================================================== */
 
 
@@ -602,14 +870,21 @@ function findWarnings(text) {
        ======================================================== */
 
     warnings.sort(
-        (a, b) => a.start - b.start
+        (a, b) =>
+            a.start - b.start
     );
+
 
     const merged = [];
 
-    for (const warning of warnings) {
 
-        if (merged.length === 0) {
+    for (
+        const warning of warnings
+    ) {
+
+        if (
+            merged.length === 0
+        ) {
 
             merged.push({
                 start: warning.start,
@@ -619,10 +894,17 @@ function findWarnings(text) {
             continue;
         }
 
-        const last =
-            merged[merged.length - 1];
 
-        if (warning.start <= last.end) {
+        const last =
+            merged[
+                merged.length - 1
+            ];
+
+
+        if (
+            warning.start <=
+            last.end
+        ) {
 
             last.end =
                 Math.max(
@@ -638,6 +920,7 @@ function findWarnings(text) {
             });
         }
     }
+
 
     return merged;
 }
@@ -659,30 +942,399 @@ function escapeHTML(text) {
 
 
 /* ============================================================
+   WORD TOKENIZATION
+   ============================================================ */
+
+function isWordCharacter(char) {
+
+    return letters.test(char);
+}
+
+
+function tokenizeText(text) {
+
+    const tokens = [];
+
+    let i = 0;
+
+
+    while (
+        i < text.length
+    ) {
+
+        const start = i;
+
+
+        if (
+            isWordCharacter(
+                text[i]
+            )
+        ) {
+
+            while (
+                i < text.length &&
+                isWordCharacter(
+                    text[i]
+                )
+            ) {
+
+                i++;
+            }
+
+
+            tokens.push({
+                type: "word",
+                text: text.slice(
+                    start,
+                    i
+                )
+            });
+
+
+        } else {
+
+            while (
+                i < text.length &&
+                !isWordCharacter(
+                    text[i]
+                )
+            ) {
+
+                i++;
+            }
+
+
+            tokens.push({
+                type: "text",
+                text: text.slice(
+                    start,
+                    i
+                )
+            });
+        }
+    }
+
+
+    return tokens;
+}
+
+
+/* ============================================================
+   WORD CLASS CSS
+   ============================================================ */
+
+function getWordClassCSS(
+    wordClass
+) {
+
+    switch (wordClass) {
+
+        case "n.":
+            return "noun";
+
+        case "v.":
+            return "verb";
+
+        case "de.":
+            return "adjective";
+
+        default:
+            return "";
+    }
+}
+
+
+/* ============================================================
+   RENDER LOCKED INPUT
+   ============================================================ */
+
+function renderLockedInput() {
+
+    const input =
+        document.getElementById(
+            "input"
+        );
+
+
+    const lockedInput =
+        document.getElementById(
+            "lockedInput"
+        );
+
+
+    const text =
+        input.value;
+
+
+    const tokens =
+        tokenizeText(text);
+
+
+    let html = "";
+
+    let wordIndex = 0;
+
+
+    for (
+        const token of tokens
+    ) {
+
+        if (
+            token.type === "text"
+        ) {
+
+            html +=
+                escapeHTML(
+                    token.text
+                );
+
+            continue;
+        }
+
+
+        const wordClass =
+            wordClasses[
+                wordIndex
+            ] ?? null;
+
+
+        const cssClass =
+            getWordClassCSS(
+                wordClass
+            );
+
+
+        html +=
+            '<span' +
+            ' class="word ' +
+            cssClass +
+            '"' +
+            ' data-word-index="' +
+            wordIndex +
+            '"' +
+            ' onclick="openWordMenu(event, ' +
+            wordIndex +
+            ')"' +
+            '>' +
+
+            escapeHTML(
+                token.text
+            ) +
+
+            (
+                wordClass
+                    ? '<span class="word-label">' +
+                      escapeHTML(
+                          wordClass
+                      ) +
+                      '</span>'
+                    : ''
+            ) +
+
+            '</span>';
+
+
+        wordIndex++;
+    }
+
+
+    lockedInput.innerHTML =
+        html;
+}
+
+
+/* ============================================================
    RENDER OUTPUT
-   ============================================================
-
-   Newlines are preserved because .output uses
-   white-space: pre-wrap.
-
-   No <br> conversion is needed.
    ============================================================ */
 
 function renderOutput(text) {
 
     const output =
-        document.getElementById("output");
+        document.getElementById(
+            "output"
+        );
+
 
     const status =
-        document.getElementById("status");
+        document.getElementById(
+            "status"
+        );
+
 
     const warnings =
         findWarnings(text);
 
 
-    if (warnings.length === 0) {
+    const tokens =
+        tokenizeText(text);
 
-        output.textContent = text;
+
+    let globalPosition = 0;
+
+    let wordIndex = 0;
+
+    let html = "";
+
+
+    for (
+        const token of tokens
+    ) {
+
+        if (
+            token.type === "text"
+        ) {
+
+            html +=
+                escapeHTML(
+                    token.text
+                );
+
+
+            globalPosition +=
+                token.text.length;
+
+
+            continue;
+        }
+
+
+        const wordStart =
+            globalPosition;
+
+
+        const wordEnd =
+            wordStart +
+            token.text.length;
+
+
+        const wordClass =
+            wordClasses[
+                wordIndex
+            ] ?? null;
+
+
+        const cssClass =
+            getWordClassCSS(
+                wordClass
+            );
+
+
+        const wordWarnings =
+            warnings.filter(
+                warning =>
+                    warning.end >
+                    wordStart &&
+                    warning.start <
+                    wordEnd
+            );
+
+
+        let wordHTML = "";
+
+        let localPosition = 0;
+
+
+        for (
+            const warning of
+            wordWarnings
+        ) {
+
+            const warningStart =
+                Math.max(
+                    warning.start -
+                    wordStart,
+                    0
+                );
+
+
+            const warningEnd =
+                Math.min(
+                    warning.end -
+                    wordStart,
+                    token.text.length
+                );
+
+
+            if (
+                warningStart >
+                localPosition
+            ) {
+
+                wordHTML +=
+                    escapeHTML(
+                        token.text.slice(
+                            localPosition,
+                            warningStart
+                        )
+                    );
+            }
+
+
+            wordHTML +=
+                '<span class="warning">' +
+                escapeHTML(
+                    token.text.slice(
+                        warningStart,
+                        warningEnd
+                    )
+                ) +
+                '</span>';
+
+
+            localPosition =
+                warningEnd;
+        }
+
+
+        if (
+            localPosition <
+            token.text.length
+        ) {
+
+            wordHTML +=
+                escapeHTML(
+                    token.text.slice(
+                        localPosition
+                    )
+                );
+        }
+
+
+        html +=
+            '<span class="word ' +
+            cssClass +
+            '">' +
+
+            wordHTML +
+
+            (
+                wordClass
+                    ? '<span class="word-label">' +
+                      escapeHTML(
+                          wordClass
+                      ) +
+                      '</span>'
+                    : ''
+            ) +
+
+            '</span>';
+
+
+        globalPosition =
+            wordEnd;
+
+
+        wordIndex++;
+    }
+
+
+    output.innerHTML =
+        html;
+
+
+    if (
+        warnings.length === 0
+    ) {
 
         status.textContent =
             "No spelling changes detected.";
@@ -691,85 +1343,371 @@ function renderOutput(text) {
             "warning-status"
         );
 
+    } else {
+
+        status.textContent =
+            warnings.length +
+            " spelling section(s) may require manual modification.";
+
+        status.classList.add(
+            "warning-status"
+        );
+    }
+}
+
+
+/* ============================================================
+   LOCK / UNLOCK
+   ============================================================ */
+
+function toggleLock() {
+
+    const input =
+        document.getElementById(
+            "input"
+        );
+
+
+    const lockedInput =
+        document.getElementById(
+            "lockedInput"
+        );
+
+
+    const button =
+        document.getElementById(
+            "lockButton"
+        );
+
+
+    if (!isLocked) {
+
+        isLocked = true;
+
+
+        renderLockedInput();
+
+
+        input.style.display =
+            "none";
+
+
+        lockedInput.style.display =
+            "block";
+
+
+        button.textContent =
+            "Unlock";
+
+
+        /*
+           Lock and Unlock deliberately use
+           the exact same button color.
+        */
+
+        button.classList.remove(
+            "locked"
+        );
+
+    } else {
+
+        isLocked = false;
+
+
+        input.style.display =
+            "block";
+
+
+        lockedInput.style.display =
+            "none";
+
+
+        button.textContent =
+            "Lock";
+
+
+        button.classList.remove(
+            "locked"
+        );
+
+
+        input.focus();
+    }
+}
+
+
+/* ============================================================
+   OPEN WORD MENU
+   ============================================================ */
+
+function openWordMenu(
+    event,
+    wordIndex
+) {
+
+    if (!isLocked) {
         return;
     }
 
 
-    let html = "";
-    let position = 0;
+    event.stopPropagation();
 
 
-    for (const warning of warnings) {
+    selectedWordIndex =
+        Number(wordIndex);
 
-        /*
-            Normal text before the warning.
-        */
 
-        html += escapeHTML(
-            text.slice(
-                position,
-                warning.start
-            )
+    const menu =
+        document.getElementById(
+            "wordMenu"
         );
 
 
-        /*
-            Only the exact spelling-change area
-            becomes red and bold.
-        */
-
-        html +=
-            '<span class="warning">' +
-            escapeHTML(
-                text.slice(
-                    warning.start,
-                    warning.end
-                )
-            ) +
-            '</span>';
-
-
-        position = warning.end;
-    }
-
-
-    /*
-        Remaining normal text.
-    */
-
-    html += escapeHTML(
-        text.slice(position)
+    menu.classList.add(
+        "visible"
     );
 
 
-    output.innerHTML = html;
+    const rect =
+        event.currentTarget
+        .getBoundingClientRect();
 
 
-    status.textContent =
-        warnings.length +
-        " spelling section(s) may require manual modification.";
+    let left =
+        rect.left;
 
-    status.classList.add(
-        "warning-status"
+
+    let top =
+        rect.bottom + 7;
+
+
+    const menuWidth =
+        160;
+
+
+    const menuHeight =
+        225;
+
+
+    if (
+        left + menuWidth >
+        window.innerWidth - 10
+    ) {
+
+        left =
+            window.innerWidth -
+            menuWidth -
+            10;
+    }
+
+
+    if (
+        top + menuHeight >
+        window.innerHeight - 10
+    ) {
+
+        top =
+            rect.top -
+            menuHeight -
+            7;
+    }
+
+
+    menu.style.left =
+        Math.max(
+            left,
+            10
+        ) + "px";
+
+
+    menu.style.top =
+        Math.max(
+            top,
+            10
+        ) + "px";
+}
+
+
+/* ============================================================
+   SET WORD CLASS
+   ============================================================ */
+
+function setWordClass(
+    wordClass
+) {
+
+    if (
+        selectedWordIndex === null
+    ) {
+        return;
+    }
+
+
+    if (
+        wordClass === "n/a"
+    ) {
+
+        delete wordClasses[
+            selectedWordIndex
+        ];
+
+    } else {
+
+        wordClasses[
+            selectedWordIndex
+        ] = wordClass;
+    }
+
+
+    closeWordMenu();
+
+
+    renderLockedInput();
+
+
+    const input =
+        document.getElementById(
+            "input"
+        );
+
+
+    renderOutput(
+        convertString(
+            input.value
+        )
     );
 }
 
 
 /* ============================================================
-   CLEAR
+   REMOVE WORD CLASS
+   ============================================================ */
+
+function removeWordClass() {
+
+    if (
+        selectedWordIndex === null
+    ) {
+        return;
+    }
+
+
+    delete wordClasses[
+        selectedWordIndex
+    ];
+
+
+    closeWordMenu();
+
+
+    renderLockedInput();
+
+
+    const input =
+        document.getElementById(
+            "input"
+        );
+
+
+    renderOutput(
+        convertString(
+            input.value
+        )
+    );
+}
+
+
+/* ============================================================
+   CLOSE WORD MENU
+   ============================================================ */
+
+function closeWordMenu() {
+
+    const menu =
+        document.getElementById(
+            "wordMenu"
+        );
+
+
+    menu.classList.remove(
+        "visible"
+    );
+
+
+    selectedWordIndex =
+        null;
+}
+
+
+/* ============================================================
+   CLEAR EVERYTHING
    ============================================================ */
 
 function clearAll() {
 
-    document.getElementById("input").value = "";
+    document.getElementById(
+        "input"
+    ).value = "";
 
-    document.getElementById("output").textContent = "";
+
+    document.getElementById(
+        "output"
+    ).textContent = "";
+
+
+    document.getElementById(
+        "lockedInput"
+    ).textContent = "";
+
+
+    wordClasses = {};
+
+
+    closeWordMenu();
+
+
+    if (isLocked) {
+
+        isLocked = false;
+
+
+        document.getElementById(
+            "input"
+        ).style.display =
+            "block";
+
+
+        document.getElementById(
+            "lockedInput"
+        ).style.display =
+            "none";
+    }
+
+
+    const button =
+        document.getElementById(
+            "lockButton"
+        );
+
+
+    button.textContent =
+        "Lock";
+
+
+    button.classList.remove(
+        "locked"
+    );
+
 
     const status =
-        document.getElementById("status");
+        document.getElementById(
+            "status"
+        );
+
 
     status.textContent =
         "No spelling changes detected.";
+
 
     status.classList.remove(
         "warning-status"
@@ -778,15 +1716,99 @@ function clearAll() {
 
 
 /* ============================================================
-   LIVE CONVERSION
+   CLEAR WORD CLASSES
+   ============================================================ */
+
+function clearWordClasses() {
+
+    wordClasses = {};
+
+
+    closeWordMenu();
+
+
+    if (isLocked) {
+
+        renderLockedInput();
+    }
+
+
+    const input =
+        document.getElementById(
+            "input"
+        );
+
+
+    renderOutput(
+        convertString(
+            input.value
+        )
+    );
+}
+
+
+/* ============================================================
+   CLOSE MENU WHEN CLICKING ELSEWHERE
+   ============================================================ */
+
+document.addEventListener(
+    "click",
+    function(event) {
+
+        const menu =
+            document.getElementById(
+                "wordMenu"
+            );
+
+
+        if (
+            menu.classList.contains(
+                "visible"
+            ) &&
+            !menu.contains(
+                event.target
+            ) &&
+            !event.target.closest(
+                ".locked-input .word"
+            )
+        ) {
+
+            closeWordMenu();
+        }
+    }
+);
+
+
+/* ============================================================
+   LIVE OUTPUT WHILE EDITING
    ============================================================ */
 
 document
     .getElementById("input")
     .addEventListener(
         "input",
-        convertText
+        function() {
+
+            if (!isLocked) {
+
+                const converted =
+                    convertString(
+                        this.value
+                    );
+
+                renderOutput(
+                    converted
+                );
+            }
+        }
     );
+
+
+/* ============================================================
+   INITIALIZE
+   ============================================================ */
+
+convertText();
 
 </script>
 
